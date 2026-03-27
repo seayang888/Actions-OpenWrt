@@ -1,0 +1,57 @@
+name: Build ImmortalWrt AX3000T
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialization environment
+        run: |
+          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo -E apt-get -qq update
+          sudo -E apt-get -qq install $(curl -fsSL https://raw.githubusercontent.com | grep -v 'apt-get update')
+          sudo -E apt-get -qq autoremove --purge
+          sudo -E apt-get -qq clean
+
+      - name: Clone source code
+        run: |
+          # 建议用官方或主流仓库，确保 AX3000T 适配最稳
+          git clone --depth 1 https://github.com openwrt
+
+      - name: Update & Install Feeds
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load Custom Config
+        run: |
+          # 确保你的 .config 文件放在 GitHub 仓库根目录
+          [ -e .config ] && cp .config openwrt/.config
+          cd openwrt
+          # 关键步骤：补充缺失的依赖并强制应用你的配置
+          make defconfig
+
+      - name: Download package
+        run: |
+          cd openwrt
+          make download -j$(nproc)
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile the firmware
+        run: |
+          cd openwrt
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: ImmortalWrt_AX3000T
+          path: openwrt/bin/targets/mediatek/filogic/*stock-layout*
