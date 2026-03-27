@@ -21,7 +21,7 @@ jobs:
       - name: Clone source code
         run: |
           # 建议用官方或主流仓库，确保 AX3000T 适配最稳
-          git clone --depth 1 https://github.com openwrt
+           git clone https://github.com/seayang888/immortalwrt.git immortalwrt
 
       - name: Update & Install Feeds
         run: |
